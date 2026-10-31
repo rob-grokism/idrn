@@ -1,30 +1,44 @@
 # idrn_client
 
-A permset-enabled single-page application scaffolded by the [bookins.io](https://bookins.io) PaaS provisioner for `https://idrn.bookins.io`.
+A full-stack PermSet-enabled application (Angular SPA + Node/Express API + isolated MongoDB database) scaffolded by the [bookins.io](https://bookins.io) PaaS provisioner for `https://idrn.bookins.io`.
 
 It uses the **Bookins.io PermSet Protocol** for zero-PII identity and sybil-resistant authorization:
 1. **Public Humanity (`amihuman`):** Verifies a real human stands behind the handle across all Grokism ecosystem apps.
 2. **Origin-Scoped Private PermSet (`https://idrn.bookins.io`):** Disclosed **only** to `https://idrn.bookins.io` and never to any other site.
-3. **Zero PII in the App:** Name, email, and street address remain inside the isolated Bookins vault.
+3. **Isolated Tenant MongoDB (`paas_idrn`):** Backed by a least-privilege MongoDB user on the Bookins K3s `mongodb-0` server with `readWrite` access **only** to `paas_idrn` (zero access to the Bookins `oracleApp` PII vault). All application records are keyed by the member's opaque `ps_...` PermSet handle.
 
 ---
 
-## 1. Clone & Customize Locally
+## 1. Clone & Run Locally (With Local MongoDB)
 
 ```bash
 git clone https://github.com/rob-grokism/idrn.git
 cd idrn
 npm install
+
+# Option A: Build Angular and run the full-stack Express + MongoDB server on http://localhost:3000
+npm run build
+PORT=3000 MONGO_URI="mongodb://127.0.0.1:27017/paas_idrn" npm run server
+
+# Option B: Run Angular dev server on http://localhost:4200
 npm start
 ```
 
-Open `http://localhost:4200` in your browser to preview your changes locally.
+---
+
+## 2. How the Isolated MongoDB Connection Works (`server.mjs` & `Dockerfile`)
+
+- **Zero Secrets in Code or `Dockerfile`:** `server.mjs` reads `process.env.MONGO_URI` and `process.env.DB_NAME`.
+- **Automatic K3s Secret Injection:** When deployed on the Bookins.io K3s cluster, Kubernetes automatically injects `MONGO_URI` and `DB_NAME` (`paas_idrn`) from the cluster's `paas-db-idrn` Secret pointing to `mongodb.mongodb.svc.cluster.local:27017`.
+- **Adding Custom `/api/*` Endpoints & Collections:**
+  Open `server.mjs` and add your own Express routes using `requireOriginPermset` and `await getDb()`. Every authenticated request provides `req.member.permset` (the member's opaque `ps_...` handle) and `req.member.origin`.
 
 ---
 
-## 2. What You Can Edit vs. Protected PermSet Protocol Files
+## 3. Safe to Edit vs. Protected PermSet Protocol Files
 
 ### Safe to Customize Freely
+- `server.mjs` — Add custom `/api/*` routes and MongoDB collections (keep `requireOriginPermset` middleware intact)
 - `src/app/pages/landing.component.ts` — Public landing page content and layout
 - `src/app/pages/home.component.ts` — Protected member workspace / dashboard UI
 - `src/styles.css` — Colors, typography, and custom styling
@@ -39,17 +53,15 @@ The GitHub Actions build pipeline (`.github/workflows/deploy.yml`) automatically
 
 ---
 
-## 3. How to Deploy Your Changes to the Bookins.io Kubernetes Cluster
-
-You do **not** need Kubernetes credentials or cluster secrets on your local machine to deploy:
+## 4. How to Deploy Your Changes to the Bookins.io Kubernetes Cluster
 
 1. **Commit and push your changes to `main`:**
    ```bash
    git add .
-   git commit -m "Customize member dashboard UI"
+   git commit -m "Add custom MongoDB routes and member UI"
    git push origin main
    ```
 2. **Automated Container Build (GitHub Actions):**
-   Pushing to `main` automatically runs `.github/workflows/deploy.yml`, which verifies the PermSet guards and pushes the compiled container image `ghcr.io/rob-grokism/idrn-fe:latest` using GitHub's built-in token.
+   Pushing to `main` runs `.github/workflows/deploy.yml`, which verifies the PermSet guards, compiles the Angular SPA + `server.mjs` `Dockerfile`, and pushes `ghcr.io/rob-grokism/idrn-fe:latest`.
 3. **One-Click Cluster Rollout in `bookins.io`:**
-   Log into your organization dashboard at [https://bookins.io](https://bookins.io), scroll to **Provisioned Organization Apps**, and click **"Deploy Latest from GitHub"**. Bookins will pull your newly built image into the K3s cluster and roll out your updated site at `https://idrn.bookins.io` with zero downtime.
+   In your organization dashboard at [https://bookins.io](https://bookins.io), scroll to **Provisioned Organization Apps** and click **"Deploy Latest from GitHub"**. Bookins will pull your new image into K3s, attach your isolated `paas-db-idrn` MongoDB secret, and roll out your updated app at `https://idrn.bookins.io`.

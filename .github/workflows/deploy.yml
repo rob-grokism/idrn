@@ -26,7 +26,8 @@ jobs:
             "src/app/membership.service.ts" \
             "src/app/pages/join.component.ts" \
             "src/app/app.routes.ts" \
-            "src/app/app.component.ts"; do
+            "src/app/app.component.ts" \
+            "server.mjs"; do
             if [ ! -f "$required_file" ]; then
               echo "ERROR: Required Bookins PermSet protocol file '$required_file' is missing."
               exit 1

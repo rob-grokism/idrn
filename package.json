@@ -1,9 +1,10 @@
 {
   "name": "idrn",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "the idrn client portal",
   "scripts": {
     "start": "ng serve",
+    "server": "node server.mjs",
     "build": "ng build --configuration production"
   },
   "private": true,
@@ -17,6 +18,10 @@
     "@angular/platform-browser-dynamic": "^18.2.0",
     "@angular/router": "^18.2.0",
     "@auth0/auth0-angular": "^2.2.3",
+    "cors": "^2.8.5",
+    "express": "^4.21.1",
+    "jose": "^5.9.6",
+    "mongodb": "^6.10.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.14.10"
